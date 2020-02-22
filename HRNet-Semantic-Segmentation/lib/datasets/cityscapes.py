@@ -189,11 +189,13 @@ class Cityscapes(BaseDataset):
 
     def save_pred(self, preds, sv_path, name):
         palette = self.get_palette(256)
-        preds = np.asarray(np.argmax(preds, axis=1), dtype=np.uint8)
-        for i in range(preds.shape[0]):
-            pred = self.convert_label(preds[i], inverse=True)
+        cpu_preds = preds.cpu() # Move the memory from cuda to cpu
+        cpu_preds = np.asarray(np.argmax(cpu_preds, axis=1), dtype=np.uint8)
+        for i in range(cpu_preds.shape[0]):
+            pred = self.convert_label(cpu_preds[i], inverse=True)
             save_img = Image.fromarray(pred)
-            save_img.putpalette(palette)
+            # Turn off the palette to output the label directly
+            # save_img.putpalette(palette)
             save_img.save(os.path.join(sv_path, name[i]+'.png'))
 
         

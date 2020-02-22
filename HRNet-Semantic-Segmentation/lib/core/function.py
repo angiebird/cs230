@@ -100,8 +100,9 @@ def validate(config, testloader, model, writer_dict):
     writer_dict['valid_global_steps'] = global_steps + 1
     return ave_loss.average(), mean_IoU, IoU_array
 
+# Set sv_pred=True to keep the predictions
 def testval(config, test_dataset, testloader, model, 
-        sv_dir='', sv_pred=False):
+        sv_dir='', sv_pred=True):
     model.eval()
     confusion_matrix = np.zeros(
         (config.DATASET.NUM_CLASSES, config.DATASET.NUM_CLASSES))
