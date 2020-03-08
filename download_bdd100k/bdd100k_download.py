@@ -32,8 +32,11 @@ def download_file(filename):
         os.system(cmd)
     return file_path
 
-def get_base_filename(filename):
-    return filename.split(".")[0]
+def get_base_without_ext(filepath):
+    return get_basename(filepath).split(".")[0]
+
+def get_basename(filepath):
+    return os.path.basename(filepath)
 
 def process_zip_file(zip_file, mode):
     cmd = "unzip " + zip_file
@@ -48,7 +51,7 @@ def keep_video_with_seg(video_path, seg_hash):
     keep_video_list = []
     remove_video_list = []
     for video in video_list:
-        video_base = get_base_filename(video)
+        video_base = get_base_without_ext(video)
         if video_base in seg_hash:
             keep_video_list.append(video)
         else:
@@ -66,14 +69,13 @@ def get_seg_img_list(mode):
 def get_seg_hash(mode):
     img_list = get_seg_img_list(mode)
     # remove the file prefix
-    hash_list = [get_base_filename(img) for img in img_list]
+    hash_list = [get_base_without_ext(img) for img in img_list]
     seg_hash = {}
     for h in hash_list:
         seg_hash[h] = h
     return seg_hash
 
-
-if __name__ == "__main__":
+def download():
     list_file = "bdd100k_download_list.txt"
     mode = "train"
     train_list, val_list, test_list = get_bdd100k_download_list(list_file)
@@ -83,3 +85,27 @@ if __name__ == "__main__":
         seg_hash = get_seg_hash(mode)
         keep_video_with_seg(video_path, seg_hash)
 
+def get_img_from_video(video_file, idx, out_dir):
+    outfile = str(idx) + ".png"
+    out_path = os.path.join(out_dir, outfile)
+    #idx / 100. should be the time in seconds where this frame is at
+    cmd = "ffmpeg -ss 00:00:" + str(idx / 100.) + " -i " + video_file + " -vframes 1 " + out_path
+    print(cmd)
+    os.system(cmd)
+
+def get_video_images(video_dir, img_base_dir):
+    index_list = range(900, 1100, 5) # dump image from 9th second to 11th second with frequency one image per 0.05 sec
+    for video in os.listdir(video_dir):
+        if video.endswith(".mov"):
+            seg_hash = get_base_without_ext(video)
+            video_path = os.path.join(video_dir, video)
+            img_dir = os.path.join(img_base_dir, seg_hash)
+            if not os.path.exists(img_dir):
+                os.mkdir(img_dir)
+            for idx in index_list:
+                get_img_from_video(video_path, idx, img_dir)
+
+if __name__ == "__main__":
+    video_dir = "/home/ubuntu/cs230/data/bdd100k/videos/train"
+    img_dir = "/home/ubuntu/cs230/data/bdd100k/video_images/train"
+    get_video_images(video_dir, img_dir)
