@@ -44,8 +44,42 @@ def convert_label_to_color_image(label_path, color_path):
         color_img_path = os.path.join(color_path, img_name)
         color_img.save(color_img_path)
 
-if __name__ == "__main__":
-    show_label_info()
+def get_files(base_dir, ext):
+    files = []
+    # r=root, d=directories, f = files
+    for r, d, f in os.walk(base_dir):
+        for file_path in f:
+            if file_path.endswith(ext):
+                files.append(os.path.join(r, file_path))
+    return files
+
+def cityscapes_generate_color_images():
     label_path = "test_results/cityscapes/labels/"
     color_path = "test_results/cityscapes/color_images/"
     convert_label_to_color_image(label_path, color_path)
+
+def rescope_image_path(img_path):
+   #remove "HRNet-Semantic-Segmentation/data/cityscapes/ from the img_path
+   word_list = img_path.split("/")
+   new_img_path = "/".join(word_list[3:])
+   return new_img_path
+
+def bdd100k_generate_image_list(mode):
+    # mode could be train / val / test
+    # We link the bdd100 images to cityscapes/video_images
+    base_dir = "HRNet-Semantic-Segmentation/data/cityscapes/video_images/"
+    base_dir = os.path.join(base_dir, mode)
+    image_list = get_files(base_dir, '.png')
+    #remove "HRNet-Semantic-Segmentation/data/cityscapes/ from the img_path
+    image_list = [rescope_image_path(img_path) for img_path in image_list]
+    return image_list
+
+def output_image_list(image_list, list_file):
+    with open(list_file, "w") as fp:
+        for img_path in image_list:
+            fp.write(img_path + "\n")
+
+if __name__ == "__main__":
+    #show_label_info()
+    train_image_list = bdd100k_generate_image_list("train")
+    output_image_list(train_image_list, "test.lst")

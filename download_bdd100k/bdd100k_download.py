@@ -85,8 +85,8 @@ def download():
         seg_hash = get_seg_hash(mode)
         keep_video_with_seg(video_path, seg_hash)
 
-def get_img_from_video(video_file, idx, out_dir):
-    outfile = str(idx) + ".png"
+def get_img_from_video(video_file, seg_hash, idx, out_dir):
+    outfile = seg_hash + "_" + str(idx) + ".png"
     out_path = os.path.join(out_dir, outfile)
     #idx / 100. should be the time in seconds where this frame is at
     cmd = "ffmpeg -ss 00:00:" + str(idx / 100.) + " -i " + video_file + " -vframes 1 " + out_path
@@ -103,7 +103,7 @@ def get_video_images(video_dir, img_base_dir):
             if not os.path.exists(img_dir):
                 os.mkdir(img_dir)
             for idx in index_list:
-                get_img_from_video(video_path, idx, img_dir)
+                get_img_from_video(video_path, seg_hash, idx, img_dir)
 
 if __name__ == "__main__":
     video_dir = "/home/ubuntu/cs230/data/bdd100k/videos/train"
