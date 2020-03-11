@@ -58,6 +58,14 @@ def convert_label(label, inverse = False):
             new_label[label == k] = v
     return new_label
 
+def convert_train_id_to_id20(label, inverse = False):
+    new_label = label.copy()
+    if inverse:
+        new_label[label == 19] = 25
+    else:
+        new_label[label == 255] = 19
+    return new_label
+
 def convert_label_to_color_image(label_path, color_path):
     #gt_label_path = "cs230/data/cityscapes/gtFine/val/
     label_list = os.listdir(label_path)
@@ -116,9 +124,21 @@ def convert_hr_output_to_use_train_id():
         train_id_label_path = os.path.join(new_hr_dir, label_file)
         train_id_label.save(train_id_label_path)
 
+def convert_hr_output_train_id_to_use_id20():
+    hr_dir = "data/bdd100k/hrnet_output_train_id"
+    new_hr_dir = "data/bdd100k/hrnet_output_id20"
+    for label_file in os.listdir(hr_dir):
+        label_file_path = os.path.join(hr_dir, label_file)
+        label = read_label_img(label_file_path)
+        new_label = convert_train_id_to_id20(label)
+        new_label = Image.fromarray(new_label)
+        new_label_path = os.path.join(new_hr_dir, label_file)
+        new_label.save(new_label_path)
+
 
 if __name__ == "__main__":
-    show_label_info()
+    #show_label_info()
     #convert_hr_output_to_use_train_id()
+    convert_hr_output_train_id_to_use_id20()
     #train_image_list = bdd100k_generate_image_list("train")
     #output_image_list(train_image_list, "test.lst")
