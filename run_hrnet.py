@@ -26,11 +26,35 @@ def set_palette():
     palette = np.array(palette)
     return palette.flatten().tolist()
 
-def label_to_color_img(label_img):
+def pil_label_to_color_img(label_img):
     palette = set_palette()
     color_img = Image.fromarray(label_img)
     color_img.putpalette(palette)
     return color_img
+
+label_mapping = {-1: 255, 0: 255, 1: 255, 2: 255, 3: 255, 4: 255, 5: 255, 6: 255, 7: 0, 8: 1, 9: 255, 10: 255, 11: 2, 12: 3, 13: 4, 14: 255, 15: 255, 16: 255, 17: 5, 18: 255, 19: 6, 20: 7, 21: 8, 22: 9, 23: 10, 24: 11, 25: 12, 26: 13, 27: 14, 28: 15, 29: 255, 30: 255, 31: 16, 32: 17, 33: 18}
+
+def label_to_color_img(label):
+    shape = (label.shape[0], label.shape[1], 3)
+    color_img = np.zeros(shape, dtype = int)
+    for k, v in label_mapping.items():
+        color_img[label == k] = np.array(labels.id2label[k].color)
+    return color_img
+
+def train_id_label_to_color_img(train_id_label):
+    label = convert_label(train_id_label, inverse = True)
+    return label_to_color_img(label)
+
+#copy from HRNet-Semantic-Segmentation/lib/datasets/cityscapes.py
+def convert_label(label, inverse = False):
+    new_label = label.copy()
+    if inverse:
+        for v, k in label_mapping.items():
+            new_label[label == k] = v
+    else:
+        for k, v in label_mapping.items():
+            new_label[label == k] = v
+    return new_label
 
 def convert_label_to_color_image(label_path, color_path):
     #gt_label_path = "cs230/data/cityscapes/gtFine/val/
@@ -39,7 +63,7 @@ def convert_label_to_color_image(label_path, color_path):
         img_name = os.path.basename(label)
         label_img_path = os.path.join(label_path, img_name)
         label_img = read_label_img(label_img_path)
-        color_img = label_to_color_img(label_img)
+        color_img = pil_label_to_color_img(label_img)
 
         color_img_path = os.path.join(color_path, img_name)
         color_img.save(color_img_path)
@@ -80,6 +104,6 @@ def output_image_list(image_list, list_file):
             fp.write(img_path + "\n")
 
 if __name__ == "__main__":
-    #show_label_info()
-    train_image_list = bdd100k_generate_image_list("train")
-    output_image_list(train_image_list, "test.lst")
+    show_label_info()
+    #train_image_list = bdd100k_generate_image_list("train")
+    #output_image_list(train_image_list, "test.lst")
