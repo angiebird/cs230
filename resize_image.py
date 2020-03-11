@@ -13,7 +13,7 @@ def downsample_image(original_path):
         downsample_path = os.path.join(original_path, "resize", img_name)
         downsample_img.save(downsample_path)
 
-def resize_image(image)
+def resize_image(image):
     width, height = image.size
     resize_ratio = 0.5
     target_size = (int(resize_ratio * width), int(resize_ratio * height))
@@ -21,6 +21,6 @@ def resize_image(image)
 
 if __name__ == "__main__":
     downsample_image("cs230/data/bdd100k/seg/labels/train_id20")
-    downsample_image("cs230/data/bdd100k/video_images/train/")
+    downsample_image("cs230/data/bdd100k/video_images/train")
     downsample_image("data/bdd100k/hrnet_output_id20")
     pass
