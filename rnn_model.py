@@ -24,7 +24,7 @@ def label_to_one_hot(label):
     return one_hot
 
 def load_video_data(seg_hash):
-    index_list = range(900, 1005, 5) # time index before 10th second 
+    index_list = range(975, 1005, 5) # time index before 10th second 
 
     # ground truth (gt) label
     gt_dir = "data/bdd100k/seg/labels/train_id20"
