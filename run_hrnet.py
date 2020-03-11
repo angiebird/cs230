@@ -124,21 +124,30 @@ def convert_hr_output_to_use_train_id():
         train_id_label_path = os.path.join(new_hr_dir, label_file)
         train_id_label.save(train_id_label_path)
 
-def convert_hr_output_train_id_to_use_id20():
-    hr_dir = "data/bdd100k/hrnet_output_train_id"
-    new_hr_dir = "data/bdd100k/hrnet_output_id20"
-    for label_file in os.listdir(hr_dir):
-        label_file_path = os.path.join(hr_dir, label_file)
+def convert_labels(convert_func, src_dir, dst_dir):
+    for label_file in os.listdir(src_dir):
+        label_file_path = os.path.join(src_dir, label_file)
         label = read_label_img(label_file_path)
-        new_label = convert_train_id_to_id20(label)
+        new_label = convert_func(label)
         new_label = Image.fromarray(new_label)
-        new_label_path = os.path.join(new_hr_dir, label_file)
+        new_label_path = os.path.join(dst_dir, label_file)
         new_label.save(new_label_path)
 
+def convert_hr_output_train_id_to_use_id20():
+    src_dir = "data/bdd100k/hrnet_output_train_id"
+    dst_dir = "data/bdd100k/hrnet_output_id20"
+    convert_labels(convert_train_id_to_id20, src_dir, dst_dir)
+
+def convert_seg_train_id_to_use_id20():
+    src_dir = "data/bdd100k/seg/labels/train"
+    dst_dir = "data/bdd100k/seg/labels/train_id20"
+    convert_labels(convert_train_id_to_id20, src_dir, dst_dir)
 
 if __name__ == "__main__":
     #show_label_info()
     #convert_hr_output_to_use_train_id()
-    convert_hr_output_train_id_to_use_id20()
+    #convert_hr_output_train_id_to_use_id20()
+    #convert_seg_train_id_to_use_id20()
     #train_image_list = bdd100k_generate_image_list("train")
     #output_image_list(train_image_list, "test.lst")
+    pass
