@@ -117,3 +117,4 @@ if __name__ == "__main__":
     a0 = np.zeros((m, num_hiden_states))
     c0 = np.zeros((m, num_hiden_states))
     model.fit([X, a0, c0], Y, epochs = 2)
+

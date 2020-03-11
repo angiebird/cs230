@@ -144,7 +144,7 @@ def convert_seg_train_id_to_use_id20():
     convert_labels(convert_train_id_to_id20, src_dir, dst_dir)
 
 if __name__ == "__main__":
-    #show_label_info()
+    show_label_info()
     #convert_hr_output_to_use_train_id()
     #convert_hr_output_train_id_to_use_id20()
     #convert_seg_train_id_to_use_id20()
