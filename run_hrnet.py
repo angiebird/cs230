@@ -49,9 +49,11 @@ def train_id_label_to_color_img(train_id_label):
 def convert_label(label, inverse = False):
     new_label = label.copy()
     if inverse:
+        # convert train_id to id
         for v, k in label_mapping.items():
             new_label[label == k] = v
     else:
+        # convert id to train_id
         for k, v in label_mapping.items():
             new_label[label == k] = v
     return new_label
@@ -103,7 +105,20 @@ def output_image_list(image_list, list_file):
         for img_path in image_list:
             fp.write(img_path + "\n")
 
+def convert_hr_output_to_use_train_id():
+    hr_dir = "data/bdd100k/hrnet_output"
+    new_hr_dir = "data/bdd100k/hrnet_output_train_id"
+    for label_file in os.listdir(hr_dir):
+        label_file_path = os.path.join(hr_dir, label_file)
+        label = read_label_img(label_file_path)
+        train_id_label = convert_label(label)
+        train_id_label = Image.fromarray(train_id_label)
+        train_id_label_path = os.path.join(new_hr_dir, label_file)
+        train_id_label.save(train_id_label_path)
+
+
 if __name__ == "__main__":
     show_label_info()
+    #convert_hr_output_to_use_train_id()
     #train_image_list = bdd100k_generate_image_list("train")
     #output_image_list(train_image_list, "test.lst")
