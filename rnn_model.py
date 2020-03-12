@@ -13,6 +13,25 @@ from keras.utils import to_categorical
 from keras.optimizers import Adam
 from keras import backend as K
 
+def read_seg_hash_list(file_path = "seg_hash_list.txt"):
+    seg_hash_list = []
+    with open(file_path) as fp:
+        for line in fp:
+            seg_hash_list.append(line.split()[0])
+    return seg_hash_list
+
+def get_train_list():
+    seg_hash_list = read_seg_hash_list()
+    return seg_hash_list[:200]
+
+def get_val_list():
+    seg_hash_list = read_seg_hash_list()
+    return seg_hash_list[200:250]
+
+def get_test_list():
+    seg_hash_list = read_seg_hash_list()
+    return seg_hash_list[250:300]
+
 def get_image_time_idx(image_name):
     # An example of image_name 19cd9c06-f7cb2ecd_965.png
     words = image_name.split(".")
@@ -64,8 +83,8 @@ def load_video_data(seg_hash, test = False):
     X = np.array(X)
     X = np.swapaxes(X,0,1)
     if test:
-        X = X[0:100]
-        Y = Y[0:100]
+        X = X[0:10]
+        Y = Y[0:10]
     return {"X": X, "Y": Y, "data_size": X.shape[0], "Tx": X.shape[1], "feature_dim": X.shape[2], "num_classes":20, "image_size": image_size}
 
 def load_multiple_videos(seg_hash_list, test = False):
@@ -252,7 +271,45 @@ def get_hr_label(seg_hash, time_idx = 1000):
     label = hr.read_label_img(label_file)
     return label
 
+def train_model_v1():
+    version = "v1"
+    train_seg_hash_list = get_train_list()
+    video_data  = load_multiple_videos(train_seg_hash_list, test = False)
+
+    X = video_data["X"]
+    Y = video_data["Y"]
+    Tx = video_data["Tx"]
+    m = video_data["data_size"]
+    feature_dim = video_data["feature_dim"]
+    num_classes = video_data["num_classes"]
+    num_hiden_states = 64
+
+    print("X.shape: ", X.shape)
+    print("Y.shape: ", Y.shape)
+    print("Tx: ", Tx)
+    print("m:  ", m)
+    print("feature_dim:  ", feature_dim)
+    print("num_classes:  ", num_classes)
+
+    model = build_lstm_model(Tx, num_hiden_states, feature_dim, num_classes)
+
+    a0 = np.zeros((m, num_hiden_states))
+    c0 = np.zeros((m, num_hiden_states))
+
+    name = version + "_" + str(0)
+    save_weight(model, name)
+
+    #training
+    for idx in range(1, 10):
+        print("=== training idx", idx)
+        history = model.fit([X, a0, c0], Y, epochs = 1)
+        print(history.history)
+        name = version + "_" + str(idx)
+        save_weight(model, name)
+        save_history(name, history)
+
 if __name__ == "__main__":
-    test_prediction()
+    train_model_v1()
+    #test_prediction()
     #test_training()
     #test_load_multiple_videos()
