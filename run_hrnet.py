@@ -169,6 +169,19 @@ def save_label(id20_label, file_path):
     label = Image.fromarray(id20_label)
     label.save(file_path)
 
+def get_gt_label(seg_hash):
+    gt_dir = "data/bdd100k/seg/labels/train_id20/resize/"
+    gt_label_file = os.path.join(gt_dir, seg_hash + "_train_id.png")
+    label = hr.read_label_img(gt_label_file)
+    return label
+
+def get_hr_label(seg_hash, time_idx = 1000):
+    hrnet_dir = "data/bdd100k/hrnet_output_id20/resize/"
+    label_file = os.path.join(hrnet_dir, seg_hash + "_"+ str(1000) + ".png")
+    label = hr.read_label_img(label_file)
+    return label
+
+
 if __name__ == "__main__":
     show_label_info()
     #bdd100k_generate_resize_image_list()

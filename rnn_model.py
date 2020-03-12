@@ -251,31 +251,19 @@ def test_prediction():
     hr.save_label(label, "pre_label.png")
     hr.save_color_image(label, "pre_color.png")
 
-    hr_label = get_hr_label(seg_hash)
+    hr_label = hr.get_hr_label(seg_hash)
     hr.save_color_image(hr_label, "hr.png")
 
-    gt_label = get_gt_label(seg_hash)
+    gt_label = hr.get_gt_label(seg_hash)
     hr.save_color_image(gt_label, "gt.png")
 
     #print(new_model.evaluate([X, a0, c0], Y))
 
-def get_gt_label(seg_hash):
-    gt_dir = "data/bdd100k/seg/labels/train_id20/resize/"
-    gt_label_file = os.path.join(gt_dir, seg_hash + "_train_id.png")
-    label = hr.read_label_img(gt_label_file)
-    return label
-
-def get_hr_label(seg_hash, time_idx = 1000):
-    hrnet_dir = "data/bdd100k/hrnet_output_id20/resize/"
-    label_file = os.path.join(hrnet_dir, seg_hash + "_"+ str(1000) + ".png")
-    label = hr.read_label_img(label_file)
-    return label
-
 def evaluate_hr_net(seg_hash_list):
     avg_accuracy = 0
     for seg_hash in seg_hash_list:
-        gt_label = get_gt_label(seg_hash)
-        hr_label = get_hr_label(seg_hash)
+        gt_label = hr.get_gt_label(seg_hash)
+        hr_label = hr.get_hr_label(seg_hash)
         diff = (gt_label - hr_label) == 0
         accuracy = diff.sum() / diff.size
         avg_accuracy +=accuracy 
@@ -364,3 +352,4 @@ if __name__ == "__main__":
     #test_prediction()
     #test_training()
     #test_load_multiple_videos()
+    pass

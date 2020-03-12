@@ -31,6 +31,8 @@ from core.function import testval, test
 from utils.modelsummary import get_model_summary
 from utils.utils import create_logger, FullModel
 
+import run_hrnet as hr
+
 
 def main():
     cfg = "experiments/bdd100k/bdd100k_resize.yaml"
