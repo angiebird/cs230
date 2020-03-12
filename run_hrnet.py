@@ -1,5 +1,5 @@
 import os
-from cityscapes_tools.cityscapesscripts.helpers import labels
+import labels
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
