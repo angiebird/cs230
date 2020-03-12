@@ -105,7 +105,15 @@ def get_video_images(video_dir, img_base_dir):
             for idx in index_list:
                 get_img_from_video(video_path, seg_hash, idx, img_dir)
 
+def get_seg_hash_list(video_dir):
+    video_ls = os.listdir(video_dir)
+    seg_hash_list = [it.split(".")[0] for it in video_ls]
+    for seg_hash in seg_hash_list:
+        print(seg_hash)
+    return seg_hash_list
+
 if __name__ == "__main__":
     video_dir = "/home/ubuntu/cs230/data/bdd100k/videos/train"
     img_dir = "/home/ubuntu/cs230/data/bdd100k/video_images/train"
-    get_video_images(video_dir, img_dir)
+    get_seg_hash_list(video_dir)
+    #get_video_images(video_dir, img_dir)
