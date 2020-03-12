@@ -9,4 +9,5 @@ from __future__ import print_function
 
 from .default import _C as config
 from .default import update_config
+from .default import ext_update_config
 from .models import MODEL_EXTRAS
