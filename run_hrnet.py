@@ -115,6 +115,16 @@ def bdd100k_generate_image_list(mode):
     image_list = [rescope_image_path(img_path) for img_path in image_list]
     return image_list
 
+def bdd100k_generate_resize_image_list():
+    # We link the bdd100 images to cityscapes/video_images
+    base_dir = "HRNet-Semantic-Segmentation/data/cityscapes/video_images/train/resize/"
+    image_list = get_files(base_dir, '.png')
+    #remove "HRNet-Semantic-Segmentation/data/cityscapes/ from the img_path
+    image_list = [rescope_image_path(img_path) for img_path in image_list]
+    for img in image_list:
+        print(img)
+    return image_list
+
 def output_image_list(image_list, list_file):
     with open(list_file, "w") as fp:
         for img_path in image_list:
@@ -161,6 +171,7 @@ def save_label(id20_label, file_path):
 
 if __name__ == "__main__":
     show_label_info()
+    #bdd100k_generate_resize_image_list()
     #convert_hr_output_to_use_train_id()
     #convert_hr_output_train_id_to_use_id20()
     #convert_seg_train_id_to_use_id20()
