@@ -39,7 +39,7 @@ def label_to_color_img(label):
     color_img = np.zeros(shape, dtype = int)
     for k, v in label_mapping.items():
         color_img[label == k] = np.array(labels.id2label[k].color)
-    return color_img
+    return color_img.astype("uint8")
 
 def train_id_label_to_color_img(train_id_label):
     label = convert_label(train_id_label, inverse = True)
@@ -50,7 +50,7 @@ def id20_label_to_color_img(label):
     color_img = np.zeros(shape, dtype = int)
     for k in labels.id20_to_label.keys():
         color_img[label == k] = np.array(labels.id20_to_label[k].color)
-    return color_img
+    return color_img.astype("uint8")
 
 #copy from HRNet-Semantic-Segmentation/lib/datasets/cityscapes.py
 def convert_label(label, inverse = False):
@@ -149,6 +149,15 @@ def convert_seg_train_id_to_use_id20():
     src_dir = "data/bdd100k/seg/labels/train"
     dst_dir = "data/bdd100k/seg/labels/train_id20"
     convert_labels(convert_train_id_to_id20, src_dir, dst_dir)
+
+def save_color_image(id20_label, file_path):
+    color_image = id20_label_to_color_img(id20_label)
+    color_image = Image.fromarray(color_image)
+    color_image.save(file_path)
+
+def save_label(id20_label, file_path):
+    label = Image.fromarray(id20_label)
+    label.save(file_path)
 
 if __name__ == "__main__":
     show_label_info()

@@ -1,5 +1,6 @@
 import os
 import matplotlib.image as mpimg
+from PIL import Image
 import cv2
 import run_hrnet as hr
 import numpy as np
@@ -50,6 +51,7 @@ def load_video_data(seg_hash, test = False):
     hrnet_image_list = [os.path.join(hrnet_dir, imgfile) for imgfile in image_list]
 
     X = []
+    image_size = mpimg.imread(video_image_list[0]).shape[0:2]
     for i in range(len(video_image_list)):
         img = mpimg.imread(video_image_list[i])
         rgb = img.reshape(-1, 3)
@@ -64,7 +66,21 @@ def load_video_data(seg_hash, test = False):
     if test:
         X = X[0:100]
         Y = Y[0:100]
-    return {"X": X, "Y": Y, "data_size": X.shape[0], "Tx": X.shape[1], "feature_dim": X.shape[2], "num_classes":20}
+    return {"X": X, "Y": Y, "data_size": X.shape[0], "Tx": X.shape[1], "feature_dim": X.shape[2], "num_classes":20, "image_size": image_size}
+
+def load_multiple_videos(seg_hash_list, test = False):
+    total_data = load_video_data(seg_hash_list[0], test = test)
+    X_list = []
+    Y_list = []
+    for seg_hash in seg_hash_list[1:]:
+        video_data = load_video_data(seg_hash, test = test)
+        X_list.append(video_data["X"])
+        Y_list.append(video_data["Y"])
+
+    total_data["X"] = np.concatenate(X_list, axis = 0)
+    total_data["Y"] = np.concatenate(Y_list, axis = 0)
+    total_data["data_size"] = total_data["X"].shape[0]
+    return total_data
 
 def build_lstm_model(Tx, num_hiden_states, feature_dim, num_classes):
     X = Input(shape=(Tx, feature_dim))
@@ -120,6 +136,25 @@ def save_weight(model, name):
     model.save_weights(weight_path)
     return model
 
+def test_load_multiple_videos():
+    seg_hash_list = ["0555945c-a5a83e97", "064c84ab-5560b5a4"]
+    video_data  = load_multiple_videos(seg_hash_list, test = True)
+
+    X = video_data["X"]
+    Y = video_data["Y"]
+    Tx = video_data["Tx"]
+    m = video_data["data_size"]
+    feature_dim = video_data["feature_dim"]
+    num_classes = video_data["num_classes"]
+
+    print("X.shape: ", X.shape)
+    print("Y.shape: ", Y.shape)
+    print("Tx: ", Tx)
+    print("m:  ", m)
+    print("feature_dim:  ", feature_dim)
+    print("num_classes:  ", num_classes)
+
+
 def test_training():
     # load video data
     video_data  = load_video_data("0555945c-a5a83e97", test = False)
@@ -159,5 +194,65 @@ def test_training():
     new_history = load_history("test")
     #print(new_model.evaluate([X, a0, c0], Y))
     print(new_history.history)
+
+def predict_label(model, X):
+    num_hiden_states = 64
+    m = X.shape[0]
+    a0 = np.zeros((m, num_hiden_states))
+    c0 = np.zeros((m, num_hiden_states))
+    one_hot = model.predict([X, a0, c0])
+    label = np.argmax(one_hot, axis = 1)
+    label = label.astype("uint8")
+    return label
+
+def flatten_label_to_img(flatten_label, image_size):
+    img_label = flatten_label.astype("uint8") #this step is important for saving image using PIL
+    img_label = img_label.reshape(image_size)
+    return img_label
+
+def test_prediction():
+    seg_hash = "0555945c-a5a83e97"
+    video_data  = load_video_data(seg_hash, test = False)
+    X = video_data["X"]
+    Y = video_data["Y"]
+    Tx = video_data["Tx"]
+    feature_dim = video_data["feature_dim"]
+    num_classes = video_data["num_classes"]
+    num_hiden_states = 64
+
+    model = build_lstm_model(Tx, num_hiden_states, feature_dim, num_classes)
+
+    load_weight(model, "test")
+
+    label = predict_label(model, X)
+    label = flatten_label_to_img(label, video_data["image_size"])
+
+    print(label.shape, label.dtype)
+    print(label.max(), label.min())
+    hr.save_label(label, "pre_label.png")
+    hr.save_color_image(label, "pre_color.png")
+
+    hr_label = get_hr_label(seg_hash)
+    hr.save_color_image(hr_label, "hr.png")
+
+    gt_label = get_gt_label(seg_hash)
+    hr.save_color_image(gt_label, "gt.png")
+
+    #print(new_model.evaluate([X, a0, c0], Y))
+
+def get_gt_label(seg_hash):
+    gt_dir = "data/bdd100k/seg/labels/train/"
+    gt_label_file = os.path.join(gt_dir, seg_hash + "_train_id.png")
+    label = hr.read_label_img(gt_label_file)
+    return label
+
+def get_hr_label(seg_hash, time_idx = 1000):
+    hrnet_dir = "data/bdd100k/hrnet_output_id20/resize/"
+    label_file = os.path.join(hrnet_dir, seg_hash + "_"+ str(1000) + ".png")
+    label = hr.read_label_img(label_file)
+    return label
+
 if __name__ == "__main__":
-    test_training()
+    test_prediction()
+    #test_training()
+    #test_load_multiple_videos()
