@@ -1,6 +1,7 @@
 import os
 import labels
 import cv2
+import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
@@ -172,15 +173,19 @@ def save_label(id20_label, file_path):
 def get_gt_label(seg_hash):
     gt_dir = "data/bdd100k/seg/labels/train_id20/resize/"
     gt_label_file = os.path.join(gt_dir, seg_hash + "_train_id.png")
-    label = hr.read_label_img(gt_label_file)
+    label = read_label_img(gt_label_file)
     return label
 
 def get_hr_label(seg_hash, time_idx = 1000):
     hrnet_dir = "data/bdd100k/hrnet_output_id20/resize/"
-    label_file = os.path.join(hrnet_dir, seg_hash + "_"+ str(1000) + ".png")
-    label = hr.read_label_img(label_file)
+    label_file = os.path.join(hrnet_dir, seg_hash + "_"+ str(time_idx) + ".png")
+    label = read_label_img(label_file)
     return label
 
+def get_video_image(seg_hash, time_idx = 1000):
+    base_dir = "HRNet-Semantic-Segmentation/data/cityscapes/video_images/train/resize/"
+    img_file = os.path.join(base_dir, seg_hash + "_"+ str(time_idx) + ".png")
+    return mpimg.imread(img_file)
 
 if __name__ == "__main__":
     show_label_info()
