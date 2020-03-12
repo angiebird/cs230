@@ -23,7 +23,7 @@ def label_to_one_hot(label):
     one_hot = to_categorical(label, num_classes = 20)
     return one_hot
 
-def load_video_data(seg_hash):
+def load_video_data(seg_hash, test = False):
     index_list = range(900, 1005, 5) # time index before 10th second 
 
     # ground truth (gt) label
@@ -61,6 +61,9 @@ def load_video_data(seg_hash):
         #print(out.shape)
     X = np.array(X)
     X = np.swapaxes(X,0,1)
+    if test:
+        X = X[0:100]
+        Y = Y[0:100]
     return {"X": X, "Y": Y, "data_size": X.shape[0], "Tx": X.shape[1], "feature_dim": X.shape[2], "num_classes":20}
 
 def build_lstm_model(Tx, num_hiden_states, feature_dim, num_classes):
@@ -86,11 +89,27 @@ def build_lstm_model(Tx, num_hiden_states, feature_dim, num_classes):
             outputs.append(out)
 
     model = Model(inputs = [X, a0, c0], outputs = outputs)
+
+    opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, decay=0.01)
+    model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
+
     return model
 
-if __name__ == "__main__":
+def load_weight(model, name):
+    weight_dir = "model_weight"
+    weight_path = os.path.join(weight_dir, name + ".h5")
+    model.load_weights(weight_path)
+    return model
+
+def save_weight(model, name):
+    weight_dir = "model_weight"
+    weight_path = os.path.join(weight_dir, name + ".h5")
+    model.save_weights(weight_path)
+    return model
+
+def test_training():
     # load video data
-    video_data  = load_video_data("0555945c-a5a83e97")
+    video_data  = load_video_data("0555945c-a5a83e97", test = True)
     X = video_data["X"]
     Y = video_data["Y"]
     Tx = video_data["Tx"]
@@ -112,8 +131,17 @@ if __name__ == "__main__":
     #model.summary()
 
     #training
-    opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, decay=0.01)
-    model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
     a0 = np.zeros((m, num_hiden_states))
     c0 = np.zeros((m, num_hiden_states))
     model.fit([X, a0, c0], Y, epochs = 2)
+    print(model.evaluate([X, a0, c0], Y))
+
+    save_weight(model, "test")
+
+    new_model = build_lstm_model(Tx, num_hiden_states, feature_dim, num_classes)
+
+    load_weight(new_model, "test")
+    print(new_model.evaluate([X, a0, c0], Y))
+
+if __name__ == "__main__":
+    test_training()
