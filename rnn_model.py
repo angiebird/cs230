@@ -260,7 +260,7 @@ def test_prediction():
     #print(new_model.evaluate([X, a0, c0], Y))
 
 def get_gt_label(seg_hash):
-    gt_dir = "data/bdd100k/seg/labels/train/"
+    gt_dir = "data/bdd100k/seg/labels/train_id20/resize/"
     gt_label_file = os.path.join(gt_dir, seg_hash + "_train_id.png")
     label = hr.read_label_img(gt_label_file)
     return label
@@ -270,6 +270,17 @@ def get_hr_label(seg_hash, time_idx = 1000):
     label_file = os.path.join(hrnet_dir, seg_hash + "_"+ str(1000) + ".png")
     label = hr.read_label_img(label_file)
     return label
+
+def evaluate_hr_net(seg_hash_list):
+    avg_accuracy = 0
+    for seg_hash in seg_hash_list:
+        gt_label = get_gt_label(seg_hash)
+        hr_label = get_hr_label(seg_hash)
+        diff = (gt_label - hr_label) == 0
+        accuracy = diff.sum() / diff.size
+        avg_accuracy +=accuracy 
+    avg_accuracy /= len(seg_hash_list)
+    return avg_accuracy
 
 def train_model_v1():
     version = "v1"
@@ -337,8 +348,17 @@ def evaluate_model_v1():
     load_weight(model, name)
     print(model.evaluate(x = [X, a0, c0], y=Y))
 
+def show_history_list(version, index_list):
+    print("name", "loss", "acc")
+    for i in index_list:
+        name = "v1_" + str(i)
+        history = load_history(name)
+        print(name, history.history["loss"][0], history.history["acc"][0])
 
 if __name__ == "__main__":
+    #print(evaluate_hr_net(get_train_list()))
+    #print(evaluate_hr_net(get_val_list()))
+    #show_history_list("v1", range(1, 4))
     #evaluate_model_v1()
     #train_model_v1()
     #test_prediction()
