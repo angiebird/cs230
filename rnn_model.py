@@ -3,6 +3,7 @@ import matplotlib.image as mpimg
 import cv2
 import run_hrnet as hr
 import numpy as np
+import pickle
 from keras.models import load_model, Model
 from keras.layers import Dense, Activation, Dropout, Input, LSTM, Reshape, Lambda, RepeatVector
 from  keras.layers import CuDNNLSTM
@@ -95,6 +96,19 @@ def build_lstm_model(Tx, num_hiden_states, feature_dim, num_classes):
 
     return model
 
+def load_history(name):
+    weight_dir = "model_weight"
+    history_path = os.path.join(weight_dir, name + "_history.pkl")
+    with open(history_path, 'rb') as fp:
+      return pickle.load(fp)
+    return None 
+
+def save_history(name, history):
+    weight_dir = "model_weight"
+    history_path = os.path.join(weight_dir, name + "_history.pkl")
+    with open(history_path, 'wb') as fp:
+        pickle.dump(history, fp)
+
 def load_weight(model, name):
     weight_dir = "model_weight"
     weight_path = os.path.join(weight_dir, name + ".h5")
@@ -133,15 +147,18 @@ def test_training():
     #training
     a0 = np.zeros((m, num_hiden_states))
     c0 = np.zeros((m, num_hiden_states))
-    model.fit([X, a0, c0], Y, epochs = 2)
+    history = model.fit([X, a0, c0], Y, epochs = 2)
     print(model.evaluate([X, a0, c0], Y))
+    print(history.history)
 
     save_weight(model, "test")
+    save_history("test", history)
 
     new_model = build_lstm_model(Tx, num_hiden_states, feature_dim, num_classes)
 
     load_weight(new_model, "test")
-    print(new_model.evaluate([X, a0, c0], Y))
-
+    new_history = load_history("test")
+    #print(new_model.evaluate([X, a0, c0], Y))
+    print(new_history.history)
 if __name__ == "__main__":
     test_training()
