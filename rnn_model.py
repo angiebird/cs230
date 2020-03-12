@@ -25,10 +25,10 @@ def label_to_one_hot(label):
     return one_hot
 
 def load_video_data(seg_hash, test = False):
-    index_list = range(900, 1005, 5) # time index before 10th second 
+    index_list = range(975, 1005, 5) # time index before 10th second 
 
     # ground truth (gt) label
-    gt_dir = "data/bdd100k/seg/labels/train_id20"
+    gt_dir = "data/bdd100k/seg/labels/train_id20/resize"
     gt_label_file = os.path.join(gt_dir, seg_hash + "_train_id.png")
     #print(gt_label_file)
     gt_label = hr.read_label_img(gt_label_file)
@@ -41,13 +41,12 @@ def load_video_data(seg_hash, test = False):
     image_list = [seg_hash + "_" + str(idx) + ".png" for idx in index_list]
 
     # video image
-    video_image_base_dir = "data/bdd100k/video_images/train/"
-    video_image_dir = os.path.join(video_image_base_dir, seg_hash)
+    video_image_dir = "data/bdd100k/video_images/train/resize"
     video_image_list = [os.path.join(video_image_dir, imgfile) for imgfile in image_list]
     #print(video_image_list[0])
 
     # hrnet output
-    hrnet_dir = "data/bdd100k/hrnet_output_id20"
+    hrnet_dir = "data/bdd100k/hrnet_output_id20/resize"
     hrnet_image_list = [os.path.join(hrnet_dir, imgfile) for imgfile in image_list]
 
     X = []
@@ -123,7 +122,7 @@ def save_weight(model, name):
 
 def test_training():
     # load video data
-    video_data  = load_video_data("0555945c-a5a83e97", test = True)
+    video_data  = load_video_data("0555945c-a5a83e97", test = False)
     X = video_data["X"]
     Y = video_data["Y"]
     Tx = video_data["Tx"]
