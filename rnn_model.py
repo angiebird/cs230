@@ -308,7 +308,38 @@ def train_model_v1():
         save_weight(model, name)
         save_history(name, history)
 
+def evaluate_model_v1():
+    version = "v1"
+    train_seg_hash_list = get_val_list()
+    video_data  = load_multiple_videos(train_seg_hash_list, test = False)
+
+    X = video_data["X"]
+    Y = video_data["Y"]
+    Tx = video_data["Tx"]
+    m = video_data["data_size"]
+    feature_dim = video_data["feature_dim"]
+    num_classes = video_data["num_classes"]
+    num_hiden_states = video_data["num_hiden_states"]
+
+    print("X.shape: ", X.shape)
+    print("Y.shape: ", Y.shape)
+    print("Tx: ", Tx)
+    print("m:  ", m)
+    print("feature_dim:  ", feature_dim)
+    print("num_classes:  ", num_classes)
+
+    model = build_lstm_model(Tx, num_hiden_states, feature_dim, num_classes)
+
+    a0 = np.zeros((m, num_hiden_states))
+    c0 = np.zeros((m, num_hiden_states))
+
+    name = version + "_" + str(3)
+    load_weight(model, name)
+    print(model.evaluate(x = [X, a0, c0], y=Y))
+
+
 if __name__ == "__main__":
+    #evaluate_model_v1()
     #train_model_v1()
     #test_prediction()
     #test_training()
