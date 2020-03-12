@@ -85,7 +85,8 @@ def load_video_data(seg_hash, test = False):
     if test:
         X = X[0:10]
         Y = Y[0:10]
-    return {"X": X, "Y": Y, "data_size": X.shape[0], "Tx": X.shape[1], "feature_dim": X.shape[2], "num_classes":20, "image_size": image_size}
+    return {"X": X, "Y": Y, "data_size": X.shape[0], "Tx": X.shape[1], "feature_dim": X.shape[2],
+            "num_classes":20, "image_size": image_size, "num_hiden_states": 64}
 
 def load_multiple_videos(seg_hash_list, test = False):
     total_data = load_video_data(seg_hash_list[0], test = test)
@@ -125,7 +126,7 @@ def build_lstm_model(Tx, num_hiden_states, feature_dim, num_classes):
 
     model = Model(inputs = [X, a0, c0], outputs = outputs)
 
-    opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, decay=0.01)
+    opt = Adam(lr=0.05, beta_1=0.9, beta_2=0.999, decay=0.01)
     model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
 
     return model
@@ -191,7 +192,7 @@ def test_training():
     print("feature_dim:  ", feature_dim)
     print("num_classes:  ", num_classes)
 
-    num_hiden_states = 64
+    num_hiden_states = video_data["num_hiden_states"]
 
     #create model
     model = build_lstm_model(Tx, num_hiden_states, feature_dim, num_classes)
@@ -214,8 +215,7 @@ def test_training():
     #print(new_model.evaluate([X, a0, c0], Y))
     print(new_history.history)
 
-def predict_label(model, X):
-    num_hiden_states = 64
+def predict_label(model, X, num_hiden_states):
     m = X.shape[0]
     a0 = np.zeros((m, num_hiden_states))
     c0 = np.zeros((m, num_hiden_states))
@@ -237,13 +237,13 @@ def test_prediction():
     Tx = video_data["Tx"]
     feature_dim = video_data["feature_dim"]
     num_classes = video_data["num_classes"]
-    num_hiden_states = 64
+    num_hiden_states = video_data["num_hiden_states"]
 
     model = build_lstm_model(Tx, num_hiden_states, feature_dim, num_classes)
 
     load_weight(model, "test")
 
-    label = predict_label(model, X)
+    label = predict_label(model, X, num_hiden_states)
     label = flatten_label_to_img(label, video_data["image_size"])
 
     print(label.shape, label.dtype)
@@ -282,7 +282,7 @@ def train_model_v1():
     m = video_data["data_size"]
     feature_dim = video_data["feature_dim"]
     num_classes = video_data["num_classes"]
-    num_hiden_states = 64
+    num_hiden_states = video_data["num_hiden_states"]
 
     print("X.shape: ", X.shape)
     print("Y.shape: ", Y.shape)
@@ -309,7 +309,7 @@ def train_model_v1():
         save_history(name, history)
 
 if __name__ == "__main__":
-    train_model_v1()
+    #train_model_v1()
     #test_prediction()
     #test_training()
     #test_load_multiple_videos()
