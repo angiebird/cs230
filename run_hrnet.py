@@ -45,6 +45,13 @@ def train_id_label_to_color_img(train_id_label):
     label = convert_label(train_id_label, inverse = True)
     return label_to_color_img(label)
 
+def id20_label_to_color_img(label):
+    shape = (label.shape[0], label.shape[1], 3)
+    color_img = np.zeros(shape, dtype = int)
+    for k in labels.id20_to_label.keys():
+        color_img[label == k] = np.array(labels.id20_to_label[k].color)
+    return color_img
+
 #copy from HRNet-Semantic-Segmentation/lib/datasets/cityscapes.py
 def convert_label(label, inverse = False):
     new_label = label.copy()
@@ -61,7 +68,7 @@ def convert_label(label, inverse = False):
 def convert_train_id_to_id20(label, inverse = False):
     new_label = label.copy()
     if inverse:
-        new_label[label == 19] = 25
+        new_label[label == 19] = 255
     else:
         new_label[label == 255] = 19
     return new_label
