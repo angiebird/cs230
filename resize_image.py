@@ -28,7 +28,7 @@ def resize_image(image):
     width, height = image.size
     resize_ratio = 0.5
     target_size = (int(resize_ratio * width), int(resize_ratio * height))
-    return image.convert('RGB').resize(target_size, Image.ANTIALIAS)
+    return image.convert('RGB').resize(target_size, Image.NEAREST)
 
 if __name__ == "__main__":
     downsample_image("data/bdd100k/seg/labels/train_id20")
