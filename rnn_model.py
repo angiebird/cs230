@@ -6,8 +6,8 @@ import run_hrnet as hr
 import numpy as np
 import pickle
 from keras.models import load_model, Model
-from keras.layers import Dense, Activation, Dropout, Input, LSTM, Reshape, Lambda, RepeatVector
-from  keras.layers import CuDNNLSTM
+from keras.layers import Dense, Activation, Dropout, Input, LSTM, Reshape, Lambda, RepeatVector, Conv2D
+from keras.layers import CuDNNLSTM
 from keras.initializers import glorot_uniform
 from keras.utils import to_categorical
 from keras.optimizers import Adam
@@ -69,14 +69,22 @@ def load_video_data(seg_hash, test = False):
     hrnet_dir = "data/bdd100k/hrnet_output_id20/resize"
     hrnet_image_list = [os.path.join(hrnet_dir, imgfile) for imgfile in image_list]
 
+    # hrnet feature output
+    feature_list = [seg_hash + "_" + str(idx) + ".npy" for idx in index_list]
+    hrnet_feature_dir = "data/bdd100k/hrnet_feature_resize/"
+    hrnet_feature_list = [os.path.join(hrnet_feature_dir, f) for f in feature_list]
+
     X = []
     image_size = mpimg.imread(video_image_list[0]).shape[0:2]
     for i in range(len(video_image_list)):
         img = mpimg.imread(video_image_list[i])
         rgb = img.reshape(-1, 3)
-        hr_label = hr.read_label_img(hrnet_image_list[i])
-        one_hot_hr_label = label_to_one_hot(hr_label)
-        X.append(np.concatenate((one_hot_hr_label, rgb), axis=1))
+        #hr_label = hr.read_label_img(hrnet_image_list[i])
+        #one_hot_hr_label = label_to_one_hot(hr_label)
+        feature = np.load(hrnet_feature_list[i])
+        feature = feature.reshape(feature.shape[0], -1)
+        feature = feature.swapaxes(0, 1)
+        X.append(np.concatenate((feature, rgb), axis=1))
         #print(one_hot_hr_label.shape)
         #print(rgb.shape)
         #print(out.shape)
@@ -129,6 +137,19 @@ def build_lstm_model(Tx, num_hiden_states, feature_dim, num_classes):
     opt = Adam(lr=0.05, beta_1=0.9, beta_2=0.999, decay=0.01)
     model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
 
+    return model
+
+def build_two_layer_lstm_model(Tx, feature_dim, num_classes):
+    num_classes = num_classes
+    input_shape = (Tx, feature_dim)
+    X0 = Input(shape = input_shape)
+    X = CuDNNLSTM(units = 128, return_sequences=True)(X0)
+    X = CuDNNLSTM(units = 128, return_sequences=False)(X)
+    X = Dense(units = num_classes)(X)
+    X = Activation('softmax')(X)
+    model = Model(inputs=X0, outputs=X)
+    opt = Adam(lr=0.05, beta_1=0.9, beta_2=0.999, decay=0.01)
+    model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
     return model
 
 def load_history(name):
@@ -307,6 +328,40 @@ def train_model_v1():
         save_weight(model, name)
         save_history(name, history)
 
+def train_model_v2():
+    version = "v2"
+    train_seg_hash_list = get_train_list()
+    video_data  = load_multiple_videos(train_seg_hash_list, test = False)
+
+    X = video_data["X"]
+    Y = video_data["Y"]
+    Tx = video_data["Tx"]
+    m = video_data["data_size"]
+    feature_dim = video_data["feature_dim"]
+    num_classes = video_data["num_classes"]
+
+    print("X.shape: ", X.shape)
+    print("Y.shape: ", Y.shape)
+    print("Tx: ", Tx)
+    print("m:  ", m)
+    print("feature_dim:  ", feature_dim)
+    print("num_classes:  ", num_classes)
+
+    model = build_two_layer_lstm_model(Tx, feature_dim, num_classes)
+    print(model.summary())
+
+    name = version + "_" + str(0)
+    save_weight(model, name)
+
+    #training
+    for idx in range(1, 10):
+        print("=== training idx", idx)
+        history = model.fit(X, Y, epochs = 1)
+        print(history.history)
+        name = version + "_" + str(idx)
+        save_weight(model, name)
+        save_history(name, history)
+
 def evaluate_model_v1():
     version = "v1"
     train_seg_hash_list = get_val_list()
@@ -352,4 +407,7 @@ if __name__ == "__main__":
     #test_prediction()
     #test_training()
     #test_load_multiple_videos()
+    #build_two_layer_lstm_model()
+    #print(build_lstm_model(6, 64, 23, 20).summary())
+    train_model_v2()
     pass
