@@ -6,6 +6,25 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 
+def read_seg_hash_list(file_path = "seg_hash_list.txt"):
+    seg_hash_list = []
+    with open(file_path) as fp:
+        for line in fp:
+            seg_hash_list.append(line.split()[0])
+    return seg_hash_list
+
+def get_train_list(file_path = "seg_hash_list.txt"):
+    seg_hash_list = read_seg_hash_list(file_path)
+    return seg_hash_list[:200]
+
+def get_val_list(file_path = "seg_hash_list.txt"):
+    seg_hash_list = read_seg_hash_list(file_path)
+    return seg_hash_list[200:250]
+
+def get_test_list(file_path = "seg_hash_list.txt"):
+    seg_hash_list = read_seg_hash_list(file_path)
+    return seg_hash_list[250:300]
+
 def show_label_info():
     num_classes = 19
     for trainId in range(num_classes):

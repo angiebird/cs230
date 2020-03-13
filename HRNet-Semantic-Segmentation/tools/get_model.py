@@ -32,7 +32,46 @@ from utils.modelsummary import get_model_summary
 from utils.utils import create_logger, FullModel
 
 import run_hrnet as hr
+import matplotlib.image as mpimg
+from PIL import Image
 
+
+def get_video_image(seg_hash, time_idx = 1000):
+    base_dir = "data/cityscapes/video_images/train/resize/"
+    img_file = os.path.join(base_dir, seg_hash + "_"+ str(time_idx) + ".png")
+    image =  mpimg.imread(img_file)
+    image = np.moveaxis(image, 2, 0)
+    image = image.reshape([1] + list(image.shape))
+    image = torch.from_numpy(image)
+    return image
+
+def get_label(one_hot):
+    one_hot = np.array(one_hot)
+    label = np.argmax(one_hot, axis = 0)                                                                                                
+    label = label.astype("uint8")
+    return label
+
+def remove_last_layer(model):
+    model.last_layer = nn.Sequential(*list(model.last_layer[:-1]))
+    return model
+
+
+def gen_feature(model, image_size, seg_hash, time_idx):
+    image = get_video_image(seg_hash, time_idx = time_idx)
+    pred = model(image)
+    pred = F.upsample(input=pred, size=(
+                image_size[1], image_size[0]), mode='bilinear')
+    pred = np.array(pred.cpu())
+    return pred[0]
+
+def gen_feature_list(model, image_size, seg_hash_list):
+    feature_dir = "feature_data"
+    for seg_hash in seg_hash_list:
+        index_list = range(975, 1005, 5)
+        for idx in index_list:
+            feature = gen_feature(model, image_size, seg_hash, idx)
+            file_path = os.path.join(feature_dir, seg_hash + "_" + str(idx))
+            np.save(file_path, feature)
 
 def main():
     cfg = "experiments/bdd100k/bdd100k_resize.yaml"
@@ -77,59 +116,9 @@ def main():
     model = nn.DataParallel(model, device_ids=gpus).cuda()
     model.eval()
 
-    #torch.from_numpy()
     with torch.no_grad():
-        pred = model(dump_input)
-        pred = F.upsample(input=pred, size=(
-                    image_size[1], image_size[0]), mode='bilinear')
-        print(image_size)
-        print(pred.shape)
-
-    ## prepare data
-    #test_size = (config.TEST.IMAGE_SIZE[1], config.TEST.IMAGE_SIZE[0])
-
-    #test_dataset = eval('datasets.'+config.DATASET.DATASET)(
-    #                    root=config.DATASET.ROOT,
-    #                    list_path=config.DATASET.TEST_SET,
-    #                    num_samples=None,
-    #                    num_classes=config.DATASET.NUM_CLASSES,
-    #                    multi_scale=False,
-    #                    flip=False,
-    #                    ignore_label=config.TRAIN.IGNORE_LABEL,
-    #                    base_size=config.TEST.BASE_SIZE,
-    #                    crop_size=test_size,
-    #                    downsample_rate=1)
-
-    #testloader = torch.utils.data.DataLoader(
-    #    test_dataset,
-    #    batch_size=1,
-    #    shuffle=False,
-    #    num_workers=config.WORKERS,
-    #    pin_memory=True)
-    #
-    #start = timeit.default_timer()
-    #if 'val' in config.DATASET.TEST_SET:
-    #    mean_IoU, IoU_array, pixel_acc, mean_acc = testval(config, 
-    #                                                       test_dataset, 
-    #                                                       testloader, 
-    #                                                       model)
-    #
-    #    msg = 'MeanIU: {: 4.4f}, Pixel_Acc: {: 4.4f}, \
-    #        Mean_Acc: {: 4.4f}, Class IoU: '.format(mean_IoU, 
-    #        pixel_acc, mean_acc)
-    #    logging.info(msg)
-    #    logging.info(IoU_array)
-    #elif 'test' in config.DATASET.TEST_SET:
-    #    test(config, 
-    #         test_dataset, 
-    #         testloader, 
-    #         model,
-    #         sv_dir=final_output_dir)
-
-    #end = timeit.default_timer()
-    #logger.info('Mins: %d' % np.int((end-start)/60))
-    #logger.info('Done')
-
+        seg_hash_list = hr.get_train_list("../seg_hash_list.txt")
+        gen_feature_list(model, image_size, seg_hash_list)
 
 if __name__ == '__main__':
     main()
