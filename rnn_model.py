@@ -165,6 +165,19 @@ def save_history(name, history):
     with open(history_path, 'wb') as fp:
         pickle.dump(history, fp)
 
+def load_eval_result(name, mode):
+    eval_dir = "eval_result"
+    path = os.path.join(eval_dir, name + "_" + mode + "_eval.pkl")
+    with open(path, 'rb') as fp:
+      return pickle.load(fp)
+    return None 
+
+def save_eval_result(name, mode, eval_result):
+    eval_dir = "eval_result"
+    path = os.path.join(eval_dir, name + "_" + mode + "_eval.pkl")
+    with open(path, 'wb') as fp:
+        pickle.dump(eval_result, fp)
+
 def load_weight(model, name):
     weight_dir = "model_weight"
     weight_path = os.path.join(weight_dir, name + ".h5")
@@ -391,6 +404,40 @@ def evaluate_model_v1():
     load_weight(model, name)
     print(model.evaluate(x = [X, a0, c0], y=Y))
 
+def evaluate_model_v2():
+    version = "v2"
+    mode = "val"
+    train_seg_hash_list = get_val_list()
+    video_data  = load_multiple_videos(train_seg_hash_list, test = False)
+
+    X = video_data["X"]
+    Y = video_data["Y"]
+    Tx = video_data["Tx"]
+    m = video_data["data_size"]
+    feature_dim = video_data["feature_dim"]
+    num_classes = video_data["num_classes"]
+    num_hiden_states = video_data["num_hiden_states"]
+
+    print("X.shape: ", X.shape)
+    print("Y.shape: ", Y.shape)
+    print("Tx: ", Tx)
+    print("m:  ", m)
+    print("feature_dim:  ", feature_dim)
+    print("num_classes:  ", num_classes)
+
+    model = build_two_layer_lstm_model(Tx, feature_dim, num_classes)
+
+    for idx in range(10):
+        name = version + "_" + str(idx)
+        load_weight(model, name)
+        eval_result = model.evaluate(x = X, y=Y)
+        save_eval_result(name, mode, eval_result)
+        print(eval_result)
+
+    for idx in range(10):
+        name = version + "_" + str(idx)
+        print(load_eval_result(name, mode))
+
 def show_history_list(version, index_list):
     print("name", "loss", "acc")
     for i in index_list:
@@ -409,5 +456,6 @@ if __name__ == "__main__":
     #test_load_multiple_videos()
     #build_two_layer_lstm_model()
     #print(build_lstm_model(6, 64, 23, 20).summary())
-    train_model_v2()
+    #train_model_v2()
+    evaluate_model_v2()
     pass
