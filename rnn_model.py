@@ -152,6 +152,25 @@ def build_two_layer_lstm_model(Tx, feature_dim, num_classes):
     model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
     return model
 
+def build_two_layer_lstm_model_with_dropout(Tx, feature_dim, num_classes, name):
+    model = build_two_layer_lstm_model(Tx, feature_dim, num_classes)
+    load_weight(model, name)
+    layers = list(model.layers) #layers[0]: input layers[1]:lstm layers[2]:lstm layers[3] denser
+    lstm1 = layers[1]
+    lstm2 = layers[2]
+    final = layers[3]
+    dropout1 = Dropout(0.85)
+    dropout2 = Dropout(0.85)
+    x = dropout1(lstm1.output)
+    x = lstm2(x)
+    x = dropout2(x)
+    x = final(x)
+    new_model = Model(input = model.input, output = x)
+    opt = Adam(lr=0.05, beta_1=0.9, beta_2=0.999, decay=0.01)
+    new_model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
+    print(new_model.summary())
+    return new_model
+
 def load_history(name):
     weight_dir = "model_weight"
     history_path = os.path.join(weight_dir, name + "_history.pkl")
@@ -292,6 +311,26 @@ def test_prediction():
     hr.save_color_image(gt_label, "gt.png")
 
     #print(new_model.evaluate([X, a0, c0], Y))
+
+def test_dropout():
+    seg_hash = "0555945c-a5a83e97"
+    video_data  = load_video_data(seg_hash, test = False)
+    X = video_data["X"]
+    Y = video_data["Y"]
+    Tx = video_data["Tx"]
+    feature_dim = video_data["feature_dim"]
+    num_classes = video_data["num_classes"]
+    num_hiden_states = video_data["num_hiden_states"]
+
+    model = build_two_layer_lstm_model(Tx, feature_dim, num_classes)
+
+    name = "v2_1"
+    load_weight(model, name)
+    print(model.evaluate(x = X, y = Y))
+
+    new_model = build_two_layer_lstm_model_with_dropout(Tx, feature_dim, num_classes, name)
+    print(new_model.evaluate(x = X, y = Y))
+
 
 def evaluate_hr_net(seg_hash_list):
     avg_accuracy = 0
@@ -457,5 +496,7 @@ if __name__ == "__main__":
     #build_two_layer_lstm_model()
     #print(build_lstm_model(6, 64, 23, 20).summary())
     #train_model_v2()
-    evaluate_model_v2()
+    #evaluate_model_v2()
+    #build_two_layer_lstm_model_with_dropout(6, 22, 20, "v2_1")
+    #test_dropout()
     pass
