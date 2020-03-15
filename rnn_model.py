@@ -153,6 +153,7 @@ def build_two_layer_lstm_model(Tx, feature_dim, num_classes):
     return model
 
 def build_two_layer_lstm_model_with_dropout(Tx, feature_dim, num_classes, name):
+    #for some reason, this model can not be trained
     model = build_two_layer_lstm_model(Tx, feature_dim, num_classes)
     load_weight(model, name)
     layers = list(model.layers) #layers[0]: input layers[1]:lstm layers[2]:lstm layers[3] denser
@@ -170,6 +171,21 @@ def build_two_layer_lstm_model_with_dropout(Tx, feature_dim, num_classes, name):
     new_model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
     print(new_model.summary())
     return new_model
+
+def build_two_layer_lstm_model_with_dropout_new(Tx, feature_dim, num_classes):
+    num_classes = num_classes
+    input_shape = (Tx, feature_dim)
+    X0 = Input(shape = input_shape)
+    X = CuDNNLSTM(units = 128, return_sequences=True)(X0)
+    X = Dropout(0.2)(X)
+    X = CuDNNLSTM(units = 128, return_sequences=False)(X)
+    X = Dropout(0.2)(X)
+    X = Dense(units = num_classes)(X)
+    X = Activation('softmax')(X)
+    model = Model(inputs=X0, outputs=X)
+    opt = Adam(lr=0.05, beta_1=0.9, beta_2=0.999, decay=0.01)
+    model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
+    return model
 
 def load_history(name):
     weight_dir = "model_weight"
@@ -313,8 +329,10 @@ def test_prediction():
     #print(new_model.evaluate([X, a0, c0], Y))
 
 def test_dropout():
-    seg_hash = "0555945c-a5a83e97"
-    video_data  = load_video_data(seg_hash, test = False)
+    #seg_hash = "0555945c-a5a83e97"
+    #video_data  = load_video_data(seg_hash, test = False)
+    seg_hash_list = ["0555945c-a5a83e97", "064c84ab-5560b5a4"]
+    video_data  = load_multiple_videos(seg_hash_list, test = False)
     X = video_data["X"]
     Y = video_data["Y"]
     Tx = video_data["Tx"]
@@ -414,6 +432,50 @@ def train_model_v2():
         save_weight(model, name)
         save_history(name, history)
 
+def train_model_v3():
+    version = "v3"
+    test = False
+    video_data  = load_multiple_videos(get_train_list(), test = test)
+
+    X = video_data["X"]
+    Y = video_data["Y"]
+    Tx = video_data["Tx"]
+    m = video_data["data_size"]
+    feature_dim = video_data["feature_dim"]
+    num_classes = video_data["num_classes"]
+
+    val_data  = load_multiple_videos(get_val_list(), test = test)
+    X_val = val_data["X"]
+    Y_val = val_data["Y"]
+
+    print("X.shape: ", X.shape)
+    print("Y.shape: ", Y.shape)
+    print("Tx: ", Tx)
+    print("m:  ", m)
+    print("feature_dim:  ", feature_dim)
+    print("num_classes:  ", num_classes)
+
+    # load model weight form v2 version
+    model = build_two_layer_lstm_model_with_dropout_new(Tx, feature_dim, num_classes)
+    print(model.summary())
+
+    name = version + "_" + str(0)
+    save_weight(model, name)
+
+    #training
+    for idx in range(1, 10):
+        print("=== training idx", idx)
+        #history = model.fit(X, Y, epochs = 1, validation_data = (X_val, Y_val))
+        history = model.fit(X, Y, epochs = 1)
+        print(history.history)
+        name = version + "_" + str(idx)
+        save_weight(model, name)
+        save_history(name, history)
+
+        eval_result = model.evaluate(x = X_val, y=Y_val)
+        save_eval_result(name, "val", eval_result)
+        print("eval", eval_result)
+
 def evaluate_model_v1():
     version = "v1"
     train_seg_hash_list = get_val_list()
@@ -499,4 +561,5 @@ if __name__ == "__main__":
     #evaluate_model_v2()
     #build_two_layer_lstm_model_with_dropout(6, 22, 20, "v2_1")
     #test_dropout()
+    train_model_v3()
     pass
