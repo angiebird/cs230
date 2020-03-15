@@ -7,11 +7,12 @@ import numpy as np
 import pickle
 from keras.models import load_model, Model
 from keras.layers import Dense, Activation, Dropout, Input, LSTM, Reshape, Lambda, Conv2D, TimeDistributed, Permute
-from keras.layers import CuDNNLSTM
+from keras.layers import CuDNNLSTM, ConvLSTM2D, Softmax
 from keras.initializers import glorot_uniform
 from keras.utils import to_categorical
 from keras.optimizers import Adam
 from keras import backend as K
+import tensorflow as tf
 
 def read_seg_hash_list(file_path = "seg_hash_list.txt"):
     seg_hash_list = []
@@ -121,7 +122,7 @@ def load_video_data_conv(seg_hash):
     #print(gt_label_file)
     gt_label = hr.read_label_img(gt_label_file)
     one_hot_gt_label = label_to_one_hot(gt_label)
-    Y = one_hot_gt_label
+    Y = to_categorical(gt_label)
     #print(Y.shape)
 
     # image list
@@ -159,9 +160,9 @@ def load_multiple_videos_conv(seg_hash_list, test = False):
     if test == True:
         seg_hash_list = seg_hash_list[:3]
     total_data = load_video_data_conv(seg_hash_list[0])
-    X_list = [total_data["X"]]
-    Y_list = [total_data["Y"]]
-    for seg_hash in seg_hash_list[1:]:
+    X_list = []
+    Y_list = []
+    for seg_hash in seg_hash_list:
         video_data = load_video_data_conv(seg_hash)
         X_list.append(video_data["X"])
         Y_list.append(video_data["Y"])
@@ -250,17 +251,13 @@ def build_two_layer_lstm_model_with_dropout_new(Tx, feature_dim, num_classes):
 
 def build_lstm_with_conv2d(Tx, h, w, feature_dim, num_classes):
     X0 = Input(shape=(Tx, h, w, feature_dim))
-    conv_flt_num = 64
     X = X0
-    X = TimeDistributed(Conv2D(filters = conv_flt_num, kernel_size = (3, 3), padding = 'same', activation='relu'))(X)
-    X = TimeDistributed(Conv2D(filters = conv_flt_num, kernel_size = (3, 3), padding = 'same', activation='relu'))(X)
-    X = Reshape((Tx, h*w, conv_flt_num))(X)
-    X = Permute((2, 1, 3))(X)
-    X = TimeDistributed(CuDNNLSTM(units = 128, return_sequences=False))(X)
-    X = TimeDistributed(Dropout(0.2))(X)
-    X = TimeDistributed(Dense(units = num_classes))(X)
-    X = TimeDistributed(Activation('softmax'))(X)
-
+    X = ConvLSTM2D(filters=64, kernel_size=(3, 3), data_format='channels_last',
+                    recurrent_activation='hard_sigmoid', activation='relu',
+                    padding='same', return_sequences=True)(X)
+    X = ConvLSTM2D(filters=20, kernel_size=(3, 3), data_format='channels_last',
+                    recurrent_activation='hard_sigmoid', activation='softmax',
+                    padding='same', return_sequences=False)(X)
     model = Model(inputs = X0, outputs = X)
     opt = Adam(lr=0.05, beta_1=0.9, beta_2=0.999, decay=0.01)
     model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
@@ -555,6 +552,56 @@ def train_model_v3():
         save_eval_result(name, "val", eval_result)
         print("eval", eval_result)
 
+def train_model_v4():
+    version = "v4_test"
+    test = True
+    train_seg_hash_list = get_train_list()
+    video_data  = load_multiple_videos_conv(train_seg_hash_list[0:10], test = test)
+
+    X = video_data["X"]
+    Y = video_data["Y"]
+    Tx = video_data["Tx"]
+    m = video_data["data_size"]
+    feature_dim = video_data["feature_dim"]
+    num_classes = video_data["num_classes"]
+    image_size = video_data["image_size"]
+
+    val_seg_hash_list = get_val_list()
+    val_data  = load_multiple_videos_conv(val_seg_hash_list[0:2], test = test)
+    X_val = val_data["X"]
+    Y_val = val_data["Y"]
+
+    print("X.shape: ", X.shape)
+    print("len(Y): ", len(Y))
+    print("len(Y[0]): ", len(Y[0]))
+    print("Tx: ", Tx)
+    print("m:  ", m)
+    print("image_size:   ", image_size)
+    print("feature_dim:  ", feature_dim)
+    print("num_classes:  ", num_classes)
+
+    # load model weight form v2 version
+    model = build_lstm_with_conv2d(Tx, image_size[0], image_size[1], feature_dim, num_classes)
+
+    print(model.summary())
+
+    name = version + "_" + str(0)
+    save_weight(model, name)
+
+    #training
+    for idx in range(1, 10):
+        print("=== training idx", idx)
+        #history = model.fit(X, Y, epochs = 1, validation_data = (X_val, Y_val))
+        history = model.fit(X, Y, epochs = 1)
+        print(history.history)
+        name = version + "_" + str(idx)
+        save_weight(model, name)
+        save_history(name, history)
+
+        eval_result = model.evaluate(x = X_val, y=Y_val)
+        save_eval_result(name, "val", eval_result)
+        print("eval", eval_result)
+
 def evaluate_model_v1():
     version = "v1"
     train_seg_hash_list = get_val_list()
@@ -644,4 +691,5 @@ if __name__ == "__main__":
     #build_lstm_with_conv2d(6, 360, 640, 22, 20)
     #load_video_data_conv("0555945c-a5a83e97")
     #load_multiple_videos_conv(["0555945c-a5a83e97", "064c84ab-5560b5a4"])
+    train_model_v4()
     pass
