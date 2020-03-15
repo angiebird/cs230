@@ -6,7 +6,7 @@ import run_hrnet as hr
 import numpy as np
 import pickle
 from keras.models import load_model, Model
-from keras.layers import Dense, Activation, Dropout, Input, LSTM, Reshape, Lambda, RepeatVector, Conv2D
+from keras.layers import Dense, Activation, Dropout, Input, LSTM, Reshape, Lambda, Conv2D, TimeDistributed, Permute
 from keras.layers import CuDNNLSTM
 from keras.initializers import glorot_uniform
 from keras.utils import to_categorical
@@ -98,6 +98,7 @@ def load_video_data(seg_hash, test = False):
 
 def load_multiple_videos(seg_hash_list, test = False):
     total_data = load_video_data(seg_hash_list[0], test = test)
+    # TODO(angiebird): first video needs to be put into X_list and Y_list
     X_list = []
     Y_list = []
     for seg_hash in seg_hash_list[1:]:
@@ -107,6 +108,66 @@ def load_multiple_videos(seg_hash_list, test = False):
 
     total_data["X"] = np.concatenate(X_list, axis = 0)
     total_data["Y"] = np.concatenate(Y_list, axis = 0)
+    total_data["data_size"] = total_data["X"].shape[0]
+    return total_data
+
+
+def load_video_data_conv(seg_hash):
+    index_list = range(975, 1005, 5) # time index before 10th second 
+
+    # ground truth (gt) label
+    gt_dir = "data/bdd100k/seg/labels/train_id20/resize"
+    gt_label_file = os.path.join(gt_dir, seg_hash + "_train_id.png")
+    #print(gt_label_file)
+    gt_label = hr.read_label_img(gt_label_file)
+    one_hot_gt_label = label_to_one_hot(gt_label)
+    Y = one_hot_gt_label
+    #print(Y.shape)
+
+    # image list
+    image_list = [seg_hash + "_" + str(idx) + ".png" for idx in index_list]
+
+    # video image
+    video_image_dir = "data/bdd100k/video_images/train/resize"
+    video_image_list = [os.path.join(video_image_dir, imgfile) for imgfile in image_list]
+    #print(video_image_list[0])
+
+    # hrnet output
+    hrnet_dir = "data/bdd100k/hrnet_output_id20/resize"
+    hrnet_image_list = [os.path.join(hrnet_dir, imgfile) for imgfile in image_list]
+
+    # hrnet feature output
+    feature_list = [seg_hash + "_" + str(idx) + ".npy" for idx in index_list]
+    hrnet_feature_dir = "data/bdd100k/hrnet_feature_resize/"
+    hrnet_feature_list = [os.path.join(hrnet_feature_dir, f) for f in feature_list]
+
+    X = []
+    image_size = mpimg.imread(video_image_list[0]).shape[0:2]
+    for i in range(len(video_image_list)):
+        rgb = mpimg.imread(video_image_list[i])
+        #print(rgb.shape)
+        feature = np.load(hrnet_feature_list[i])
+        feature = np.moveaxis(feature, 0, -1)
+        #print(feature.shape)
+        X.append(np.concatenate((feature, rgb), axis=-1))
+    X = np.array(X)
+    data =  {"X": X, "Y": Y, "Tx": X.shape[0], "feature_dim": X.shape[-1],
+            "num_classes":Y.shape[-1], "image_size": image_size}
+    return data
+
+def load_multiple_videos_conv(seg_hash_list, test = False):
+    if test == True:
+        seg_hash_list = seg_hash_list[:3]
+    total_data = load_video_data_conv(seg_hash_list[0])
+    X_list = [total_data["X"]]
+    Y_list = [total_data["Y"]]
+    for seg_hash in seg_hash_list[1:]:
+        video_data = load_video_data_conv(seg_hash)
+        X_list.append(video_data["X"])
+        Y_list.append(video_data["Y"])
+
+    total_data["X"] = np.array(X_list)
+    total_data["Y"] = np.array(Y_list)
     total_data["data_size"] = total_data["X"].shape[0]
     return total_data
 
@@ -183,6 +244,24 @@ def build_two_layer_lstm_model_with_dropout_new(Tx, feature_dim, num_classes):
     X = Dense(units = num_classes)(X)
     X = Activation('softmax')(X)
     model = Model(inputs=X0, outputs=X)
+    opt = Adam(lr=0.05, beta_1=0.9, beta_2=0.999, decay=0.01)
+    model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
+    return model
+
+def build_lstm_with_conv2d(Tx, h, w, feature_dim, num_classes):
+    X0 = Input(shape=(Tx, h, w, feature_dim))
+    conv_flt_num = 64
+    X = X0
+    X = TimeDistributed(Conv2D(filters = conv_flt_num, kernel_size = (3, 3), padding = 'same', activation='relu'))(X)
+    X = TimeDistributed(Conv2D(filters = conv_flt_num, kernel_size = (3, 3), padding = 'same', activation='relu'))(X)
+    X = Reshape((Tx, h*w, conv_flt_num))(X)
+    X = Permute((2, 1, 3))(X)
+    X = TimeDistributed(CuDNNLSTM(units = 128, return_sequences=False))(X)
+    X = TimeDistributed(Dropout(0.2))(X)
+    X = TimeDistributed(Dense(units = num_classes))(X)
+    X = TimeDistributed(Activation('softmax'))(X)
+
+    model = Model(inputs = X0, outputs = X)
     opt = Adam(lr=0.05, beta_1=0.9, beta_2=0.999, decay=0.01)
     model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
     return model
@@ -561,5 +640,8 @@ if __name__ == "__main__":
     #evaluate_model_v2()
     #build_two_layer_lstm_model_with_dropout(6, 22, 20, "v2_1")
     #test_dropout()
-    train_model_v3()
+    #train_model_v3()
+    #build_lstm_with_conv2d(6, 360, 640, 22, 20)
+    #load_video_data_conv("0555945c-a5a83e97")
+    #load_multiple_videos_conv(["0555945c-a5a83e97", "064c84ab-5560b5a4"])
     pass
