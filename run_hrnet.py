@@ -1,9 +1,29 @@
 import os
-from cityscapes_tools.cityscapesscripts.helpers import labels
+import labels
 import cv2
+import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
+
+def read_seg_hash_list(file_path = "seg_hash_list.txt"):
+    seg_hash_list = []
+    with open(file_path) as fp:
+        for line in fp:
+            seg_hash_list.append(line.split()[0])
+    return seg_hash_list
+
+def get_train_list(file_path = "seg_hash_list.txt"):
+    seg_hash_list = read_seg_hash_list(file_path)
+    return seg_hash_list[:200]
+
+def get_val_list(file_path = "seg_hash_list.txt"):
+    seg_hash_list = read_seg_hash_list(file_path)
+    return seg_hash_list[200:250]
+
+def get_test_list(file_path = "seg_hash_list.txt"):
+    seg_hash_list = read_seg_hash_list(file_path)
+    return seg_hash_list[250:300]
 
 def show_label_info():
     num_classes = 19
@@ -39,11 +59,18 @@ def label_to_color_img(label):
     color_img = np.zeros(shape, dtype = int)
     for k, v in label_mapping.items():
         color_img[label == k] = np.array(labels.id2label[k].color)
-    return color_img
+    return color_img.astype("uint8")
 
 def train_id_label_to_color_img(train_id_label):
     label = convert_label(train_id_label, inverse = True)
     return label_to_color_img(label)
+
+def id20_label_to_color_img(label):
+    shape = (label.shape[0], label.shape[1], 3)
+    color_img = np.zeros(shape, dtype = int)
+    for k in labels.id20_to_label.keys():
+        color_img[label == k] = np.array(labels.id20_to_label[k].color)
+    return color_img.astype("uint8")
 
 #copy from HRNet-Semantic-Segmentation/lib/datasets/cityscapes.py
 def convert_label(label, inverse = False):
@@ -61,7 +88,7 @@ def convert_label(label, inverse = False):
 def convert_train_id_to_id20(label, inverse = False):
     new_label = label.copy()
     if inverse:
-        new_label[label == 19] = 25
+        new_label[label == 19] = 255
     else:
         new_label[label == 255] = 19
     return new_label
@@ -108,6 +135,16 @@ def bdd100k_generate_image_list(mode):
     image_list = [rescope_image_path(img_path) for img_path in image_list]
     return image_list
 
+def bdd100k_generate_resize_image_list():
+    # We link the bdd100 images to cityscapes/video_images
+    base_dir = "HRNet-Semantic-Segmentation/data/cityscapes/video_images/train/resize/"
+    image_list = get_files(base_dir, '.png')
+    #remove "HRNet-Semantic-Segmentation/data/cityscapes/ from the img_path
+    image_list = [rescope_image_path(img_path) for img_path in image_list]
+    for img in image_list:
+        print(img)
+    return image_list
+
 def output_image_list(image_list, list_file):
     with open(list_file, "w") as fp:
         for img_path in image_list:
@@ -143,8 +180,35 @@ def convert_seg_train_id_to_use_id20():
     dst_dir = "data/bdd100k/seg/labels/train_id20"
     convert_labels(convert_train_id_to_id20, src_dir, dst_dir)
 
+def save_color_image(id20_label, file_path):
+    color_image = id20_label_to_color_img(id20_label)
+    color_image = Image.fromarray(color_image)
+    color_image.save(file_path)
+
+def save_label(id20_label, file_path):
+    label = Image.fromarray(id20_label)
+    label.save(file_path)
+
+def get_gt_label(seg_hash):
+    gt_dir = "data/bdd100k/seg/labels/train_id20/resize/"
+    gt_label_file = os.path.join(gt_dir, seg_hash + "_train_id.png")
+    label = read_label_img(gt_label_file)
+    return label
+
+def get_hr_label(seg_hash, time_idx = 1000):
+    hrnet_dir = "data/bdd100k/hrnet_output_id20/resize/"
+    label_file = os.path.join(hrnet_dir, seg_hash + "_"+ str(time_idx) + ".png")
+    label = read_label_img(label_file)
+    return label
+
+def get_video_image(seg_hash, time_idx = 1000):
+    base_dir = "HRNet-Semantic-Segmentation/data/cityscapes/video_images/train/resize/"
+    img_file = os.path.join(base_dir, seg_hash + "_"+ str(time_idx) + ".png")
+    return mpimg.imread(img_file)
+
 if __name__ == "__main__":
-    #show_label_info()
+    show_label_info()
+    #bdd100k_generate_resize_image_list()
     #convert_hr_output_to_use_train_id()
     #convert_hr_output_train_id_to_use_id20()
     #convert_seg_train_id_to_use_id20()

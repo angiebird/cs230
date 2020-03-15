@@ -116,6 +116,14 @@ def update_config(cfg, args):
 
     cfg.freeze()
 
+def ext_update_config(cfg, ext_cfg, ext_opts):
+    cfg.defrost()
+    
+    cfg.merge_from_file(ext_cfg)
+    cfg.merge_from_list(ext_opts)
+
+    cfg.freeze()
+
 
 if __name__ == '__main__':
     import sys
